@@ -3,9 +3,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
+#include <openssl/sha.h>
 
-
-#define BUF_SIZE 1024
+#define BUF_SIZE 25600
 
 void print_testvector(const char *FileName)
 {
@@ -56,12 +56,112 @@ void print_testvector(const char *FileName)
 
 
 
+void verificate_testvector(const char *FileName)
+{
+
+    int fd = open(FileName, O_RDONLY);
+
+    char *buf = (char *)malloc(BUF_SIZE);
+    size_t buf_size = 0;
+    int msg_bit = 0;
+    int msg_byte = 0;
+    unsigned char *msg = NULL;
+
+    unsigned char test_md[SHA512_DIGEST_LENGTH];
+    unsigned char calculated_md[SHA512_DIGEST_LENGTH];
+
+
+    SHA512_CTX ctx;
+
+
+    if(fd == -1) {
+        perror("error opening file");
+	exit(EXIT_FAILURE);
+    }
+
+    FILE *file = fdopen(fd, "r");
+    if(file == NULL) {
+	perror("error fdopen fd");
+	close(fd);
+	exit(EXIT_FAILURE);
+    }
+
+
+    while(fgets(buf, BUF_SIZE, file)) {
+
+        if(buf[0] == '\n' || buf[0] == '#' || buf[0] == '[') {
+		continue;
+	}
+
+	if(strncmp(buf, "Len = ", 6) == 0) {
+	    sscanf(buf, "Len = %d", &msg_bit);
+	    msg_byte = msg_bit / 8;
+	    msg = (unsigned char *)malloc(msg_byte);
+
+	} else if(strncmp(buf, "Msg = ", 6) == 0) {
+		size_t msg_len = strlen(buf + 6);
+
+		for(size_t i = 0; i < msg_byte; ++i) {
+		    sscanf(buf + 6 + 2 * i, "%2hhx", &msg[i]);
+		}
+
+
+	} else if(strncmp(buf, "MD = ", 5) == 0) {
+		for(size_t i = 0; i < SHA512_DIGEST_LENGTH; ++i) {
+		    sscanf(buf + 5 + 2 * i, "%2hhx", &test_md[i]);
+
+		}
+
+
+		SHA512_Init(&ctx);
+		SHA512_Update(&ctx, msg, msg_byte);
+		SHA512_Final(calculated_md, &ctx);
+
+
+		printf("TEST MD \n");
+		for(size_t i = 0; i < SHA512_DIGEST_LENGTH; ++i) {
+		    printf("%02x", test_md[i]);
+
+		}
+
+		printf("\n");
+
+		printf("Calculated \n");
+		for(size_t i = 0; i < SHA512_DIGEST_LENGTH; ++i) {
+			printf("%02x", calculated_md[i]);
+
+		}
+
+                printf("\n");
+
+
+	}
+
+
+
+    }
+
+    free(msg);
+    free(buf);
+
+    fclose(file);
+    close(fd);
+
+
+
+
+}
+
+
+
 int main(int argc, char **argv){
 
 
     const char *LongFileName = "SHA512LongMsg.rsp";
     const char *ShortFileName = "SHA512ShortMsg.rsp";
 
+
+    /*
     printf("Long Msg\n");
     print_testvector(LongFileName);
 
@@ -69,8 +169,16 @@ int main(int argc, char **argv){
 
     printf("Short Msg\n");
     print_testvector(ShortFileName);
+    */
 
 
+    printf("LongMsg.rsp verificate\n");
+
+    verificate_testvector(LongFileName);
+
+    printf("ShortMsg.rsp verificate\n");
+
+    verificate_testvector(ShortFileName);
 
 
 
