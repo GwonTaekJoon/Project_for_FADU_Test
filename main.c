@@ -5,7 +5,7 @@
 #include <fcntl.h>
 #include <openssl/sha.h>
 
-#define BUF_SIZE 25600
+#define BUF_SIZE 51200
 
 void print_testvector(const char *FileName)
 {
@@ -65,6 +65,7 @@ void verificate_testvector(const char *FileName)
     size_t buf_size = 0;
     int msg_bit = 0;
     int msg_byte = 0;
+    int vector_count = 0;
     unsigned char *msg = NULL;
 
     unsigned char test_md[SHA512_DIGEST_LENGTH];
@@ -117,22 +118,43 @@ void verificate_testvector(const char *FileName)
 		SHA512_Update(&ctx, msg, msg_byte);
 		SHA512_Final(calculated_md, &ctx);
 
+		printf("vector[%03d] ... ", vector_count);
 
-		printf("TEST MD \n");
-		for(size_t i = 0; i < SHA512_DIGEST_LENGTH; ++i) {
-		    printf("%02x", test_md[i]);
+		if(memcmp(test_md, calculated_md, SHA512_DIGEST_LENGTH) == 0) {
+		    printf("pass\n");
+		}
+
+		else {
+
+
+			printf("fail\n");
+			printf("Len      : %d\n", msg_bit);
+			printf("Msg      : ");
+			for(int i = 0 ; i < SHA512_DIGEST_LENGTH; ++i) {
+
+				printf("%02x", calculated_md[i]);
+
+			}
+			printf("\n");
+			printf("but calculated MD is\n");
+			printf("MD     : ");
+			for(int i = 0; i < SHA512_DIGEST_LENGTH; ++i) {
+
+				printf("%02x", calculated_md[i]);
+
+			}
+
+			printf("\n");
+
+
+
+
 
 		}
 
-		printf("\n");
-
-		printf("Calculated \n");
-		for(size_t i = 0; i < SHA512_DIGEST_LENGTH; ++i) {
-			printf("%02x", calculated_md[i]);
-
-		}
-
-                printf("\n");
+		++vector_count;
+		free(msg);
+		msg = NULL;
 
 
 	}
@@ -141,9 +163,8 @@ void verificate_testvector(const char *FileName)
 
     }
 
-    free(msg);
-    free(buf);
 
+    free(buf);
     fclose(file);
     close(fd);
 
