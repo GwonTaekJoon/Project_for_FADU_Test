@@ -7,51 +7,55 @@
 
 #define BUF_SIZE 51200
 
-void print_testvector(const char *FileName)
+
+
+void SHA512_Struct_Init(SHA512_CTX *ctx, const unsigned char *msg, size_t len,\
+		unsigned char *calculated_md)
 {
 
-    int fd = open(FileName, O_RDONLY);
-    int msg_bit = 0;
 
-    if(fd == -1) {
-        perror("error opening file");
-	exit(EXIT_FAILURE);
-    }
-
-    FILE *file = fdopen(fd, "r");
-    if(file == NULL) {
-	perror("error fdopen fd");
-	close(fd);
-	exit(EXIT_FAILURE);
-    }
-
-    char buf[BUF_SIZE];
-
-    while(fgets(buf, sizeof(buf), file)) {
-
-        if(buf[0] == '\n' || buf[0] == '#' || buf[0] == '[') {
-		continue;
-	}
-
-	if(strncmp(buf, "Len = ", 6) == 0) {
-	    sscanf(buf, "Len = %d", &msg_bit);
-	    printf("Len      : %d\n", msg_bit);
-
-	} else if(strncmp(buf, "Msg = ", 6) == 0) {
-	        printf("Msg      : %s", buf + 6);
-
-	} else if(strncmp(buf, "MD = ", 5) == 0) {
-		printf("MD       : %s", buf + 5);
+    SHA512_Init(ctx);
+    SHA512_Update(ctx, msg, len);
+    SHA512_Final(calculated_md, ctx);
 
 
-	}
+}
 
 
+void print_testvector_info(int *msg_bit, unsigned char *msg, \
+		unsigned char test_md[], unsigned char calculated_md[])
+{
+
+
+
+    printf("fail\n");
+    printf("Len      : %d\n", *msg_bit);
+    printf("Msg      : ");
+    for(int i = 0 ; i < *(msg_bit) / 8; ++i) {
+        printf("%02x", msg[i]);
 
     }
 
-    fclose(file);
-    close(fd);
+
+    printf("\n");
+    printf("MD       : ");
+    for(int i = 0; i < SHA512_DIGEST_LENGTH; ++i) {
+
+        printf("%02x", test_md[i]);
+
+    }
+
+    printf("\n");
+    printf("but calculated MD is\n");
+    printf("MD       : ");
+    for(int i = 0; i < SHA512_DIGEST_LENGTH; ++i) {
+
+        printf("%02x", calculated_md[i]);
+
+    }
+
+     printf("\n");
+
 }
 
 
@@ -114,9 +118,7 @@ void verificate_testvector(const char *FileName)
 		}
 
 
-		SHA512_Init(&ctx);
-		SHA512_Update(&ctx, msg, msg_byte);
-		SHA512_Final(calculated_md, &ctx);
+		SHA512_Struct_Init(&ctx, msg, msg_byte, calculated_md);
 
 		printf("vector[%03d] ... ", vector_count);
 
@@ -126,29 +128,7 @@ void verificate_testvector(const char *FileName)
 
 		else {
 
-
-			printf("fail\n");
-			printf("Len      : %d\n", msg_bit);
-			printf("Msg      : ");
-			for(int i = 0 ; i < SHA512_DIGEST_LENGTH; ++i) {
-
-				printf("%02x", calculated_md[i]);
-
-			}
-			printf("\n");
-			printf("but calculated MD is\n");
-			printf("MD     : ");
-			for(int i = 0; i < SHA512_DIGEST_LENGTH; ++i) {
-
-				printf("%02x", calculated_md[i]);
-
-			}
-
-			printf("\n");
-
-
-
-
+			print_testvector_info(&msg_bit, msg, test_md, calculated_md);
 
 		}
 
