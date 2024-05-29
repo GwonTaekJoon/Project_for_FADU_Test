@@ -59,13 +59,31 @@ void print_testvector_info(int *msg_bit, unsigned char *msg, \
 }
 
 
+void mem_free(FILE *file, int fd, char *buf, unsigned char *msg) {
+
+    if (msg == NULL) {
+        free(msg);
+    }
+
+    if (buf == NULL) {
+        free(buf);
+    }
+
+    if(file == NULL) {
+        fclose(file);
+    }
+
+    if(fd != -1) {
+        close(fd);
+    }
+
+
+}
 
 void verificate_testvector(const char *FileName)
 {
 
-    int fd = open(FileName, O_RDONLY);
 
-    char *buf = (char *)malloc(BUF_SIZE);
     size_t buf_size = 0;
     int msg_bit = 0;
     int msg_byte = 0;
@@ -78,17 +96,26 @@ void verificate_testvector(const char *FileName)
 
     SHA512_CTX ctx;
 
+    int fd = open(FileName, O_RDONLY);
+    FILE *file = fdopen(fd, "r");
+    char *buf = (char *)malloc(BUF_SIZE);
 
     if(fd == -1) {
         perror("error opening file");
 	exit(EXIT_FAILURE);
     }
 
-    FILE *file = fdopen(fd, "r");
     if(file == NULL) {
 	perror("error fdopen fd");
 	close(fd);
 	exit(EXIT_FAILURE);
+    }
+
+    if(buf == NULL) {
+	perror("error allocating buffer");
+	mem_free(file, fd, buf, NULL);
+	exit(EXIT_FAILURE);
+
     }
 
 
@@ -102,6 +129,11 @@ void verificate_testvector(const char *FileName)
 	    sscanf(buf, "Len = %d", &msg_bit);
 	    msg_byte = msg_bit / 8;
 	    msg = (unsigned char *)malloc(msg_byte);
+	    if(msg == NULL) {
+	        perror("error allocating message buffer");
+		mem_free(file, fd, buf, msg);
+		exit(EXIT_FAILURE);
+	    }
 
 	} else if(strncmp(buf, "Msg = ", 6) == 0) {
 		size_t msg_len = strlen(buf + 6);
@@ -136,20 +168,13 @@ void verificate_testvector(const char *FileName)
 		free(msg);
 		msg = NULL;
 
-
 	}
 
 
 
     }
 
-
-    free(buf);
-    fclose(file);
-    close(fd);
-
-
-
+    mem_free(file, fd, buf, msg);
 
 }
 
@@ -160,18 +185,6 @@ int main(int argc, char **argv){
 
     const char *LongFileName = "SHA512LongMsg.rsp";
     const char *ShortFileName = "SHA512ShortMsg.rsp";
-
-
-    /*
-    printf("Long Msg\n");
-    print_testvector(LongFileName);
-
-    printf("\n");
-
-    printf("Short Msg\n");
-    print_testvector(ShortFileName);
-    */
-
 
     printf("LongMsg.rsp verificate\n");
 
